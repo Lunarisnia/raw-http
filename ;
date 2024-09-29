@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 )
 
@@ -11,6 +12,11 @@ func main() {
 		panic(err)
 	}
 	defer listener.Close()
+
+	pipeReader, pipeWriter := io.Pipe()
+
+	go echo(pipeWriter, "Hello")
+	tr(pipeReader, "e", "i")
 
 	for {
 		conn, err := listener.Accept()
@@ -23,14 +29,19 @@ func main() {
 				panic(err)
 			}
 			defer c.Close()
-			httpStatus := "HTTP/1.1 200 OK\r\n"
-			content := "Hey there"
-			httpContent := fmt.Sprintf(
-				"%sContent-Length: %v\r\n\r\n%s", httpStatus,
-				len(content), content,
-			)
-
-			fmt.Fprintf(c, httpContent)
+			io.Copy(c, c)
 		}(conn)
 	}
+}
+
+func echo(w io.Writer, text string) {
+	fmt.Fprintf(w, text)
+}
+
+func tr(r io.Reader, old string, new string) {
+	bytes, err := io.ReadAll(r)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(bytes), "===")
 }
